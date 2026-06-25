@@ -92,6 +92,14 @@ Create a user config:
 
 ```bash
 agentswitch init
+agentswitch init --minimal
+```
+
+Inspect config location and contents:
+
+```bash
+agentswitch config path
+agentswitch config show
 ```
 
 Show active and disabled skills:
@@ -145,7 +153,9 @@ compatibility alias while the CLI settles. For example,
 ## Configuration
 
 Packs and presets are user-owned configuration, not hardcoded product defaults.
-Run `agentswitch init` to create:
+Run `agentswitch init --minimal` to create a small config with only standard
+roots, or `agentswitch init` to create a migration/example config with Go,
+WordPress, and translation packs.
 
 ```text
 ~/.config/agentswitch/config.toml

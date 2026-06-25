@@ -56,7 +56,7 @@ wordpress = ["wordpress"]
 func TestInitConfigWritesDefaultConfig(t *testing.T) {
 	temp := t.TempDir()
 	path := filepath.Join(temp, "config.toml")
-	if err := InitConfig(path, false); err != nil {
+	if err := InitConfig(path, false, false); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(path)
@@ -72,5 +72,27 @@ func TestInitConfigWritesDefaultConfig(t *testing.T) {
 	}
 	if _, ok := config.Presets["lean"]; !ok {
 		t.Fatalf("expected lean preset in generated config: %#v", config.Presets)
+	}
+}
+
+func TestInitConfigWritesMinimalConfig(t *testing.T) {
+	temp := t.TempDir()
+	path := filepath.Join(temp, "config.toml")
+	if err := InitConfig(path, false, true); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, err := ParseConfig(string(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(config.Packs) != 0 {
+		t.Fatalf("expected minimal config to have no packs, got %#v", config.Packs)
+	}
+	if len(config.Roots) == 0 {
+		t.Fatal("expected minimal config to include roots")
 	}
 }

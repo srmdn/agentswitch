@@ -34,7 +34,7 @@ func LoadConfig(path string) (Config, error) {
 	return ParseConfig(string(data))
 }
 
-func InitConfig(path string, overwrite bool) error {
+func InitConfig(path string, overwrite bool, minimal bool) error {
 	if !overwrite {
 		if _, err := os.Stat(path); err == nil {
 			return fmt.Errorf("config already exists: %s", path)
@@ -45,7 +45,11 @@ func InitConfig(path string, overwrite bool) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, []byte(DefaultConfigTOML()), 0o644)
+	template := DefaultConfigTOML()
+	if minimal {
+		template = MinimalConfigTOML()
+	}
+	return os.WriteFile(path, []byte(template), 0o644)
 }
 
 func DefaultConfigTOML() string {
@@ -121,6 +125,29 @@ web = []
 go = ["go"]
 wordpress = ["wordpress"]
 `, home, home, home, home, home, home, home, home, home, home, home, home))
+}
+
+func MinimalConfigTOML() string {
+	home := "$HOME"
+	return strings.TrimSpace(fmt.Sprintf(`
+# agentswitch config
+#
+# This minimal config defines the standard user skill roots and empty pack /
+# preset sections. Add packs and presets for your own workflow.
+
+[[roots]]
+name = "user"
+active = "%s/.agents/skills"
+disabled = "%s/.agents/skills.disabled"
+switchable = true
+
+[[roots]]
+name = "admin"
+active = "/etc/codex/skills"
+switchable = false
+
+[presets]
+`, home, home))
 }
 
 func ParseConfig(input string) (Config, error) {

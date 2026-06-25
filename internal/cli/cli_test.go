@@ -19,6 +19,8 @@ func TestHelpShowsClearCommandModel(t *testing.T) {
 	text := out.String()
 	for _, want := range []string{
 		"agentswitch init",
+		"agentswitch config path",
+		"agentswitch config show",
 		"agentswitch enable <skill>",
 		"agentswitch pack enable <pack>",
 		"agentswitch preset apply <preset>",
@@ -27,6 +29,31 @@ func TestHelpShowsClearCommandModel(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Fatalf("expected help to contain %q:\n%s", want, text)
 		}
+	}
+}
+
+func TestConfigPathAndShow(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	if err := os.WriteFile(configPath, []byte("marker = \"ok\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("AGENTSWITCH_CONFIG", configPath)
+
+	var pathOut bytes.Buffer
+	if code := Run([]string{"config", "path"}, &pathOut, &bytes.Buffer{}); code != 0 {
+		t.Fatalf("expected config path to succeed, got %d", code)
+	}
+	if strings.TrimSpace(pathOut.String()) != configPath {
+		t.Fatalf("unexpected config path: %q", pathOut.String())
+	}
+
+	var showOut bytes.Buffer
+	if code := Run([]string{"config", "show"}, &showOut, &bytes.Buffer{}); code != 0 {
+		t.Fatalf("expected config show to succeed, got %d", code)
+	}
+	if showOut.String() != "marker = \"ok\"\n" {
+		t.Fatalf("unexpected config content: %q", showOut.String())
 	}
 }
 

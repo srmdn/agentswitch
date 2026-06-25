@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/srmdn/agentswitch/internal/skills"
@@ -48,6 +49,8 @@ func (a *app) run(args []string) error {
 		return nil
 	case "init":
 		return a.initConfig(rest[1:])
+	case "config":
+		return a.config(rest[1:])
 	case "status":
 		return a.skillsStatus()
 	case "doctor":
@@ -69,21 +72,48 @@ func (a *app) run(args []string) error {
 
 func (a *app) initConfig(args []string) error {
 	force := false
+	minimal := false
 	for _, arg := range args {
 		switch arg {
 		case "--force":
 			force = true
+		case "--minimal":
+			minimal = true
 		default:
 			return fmt.Errorf("unknown init option %q", arg)
 		}
 	}
 
 	path := skills.DefaultConfigPath()
-	if err := skills.InitConfig(path, force); err != nil {
+	if err := skills.InitConfig(path, force, minimal); err != nil {
 		return err
 	}
 	fmt.Fprintf(a.out, "Created %s\n", path)
 	return nil
+}
+
+func (a *app) config(args []string) error {
+	if len(args) == 0 {
+		return errors.New("missing config command")
+	}
+
+	switch args[0] {
+	case "path":
+		fmt.Fprintln(a.out, skills.DefaultConfigPath())
+		return nil
+	case "show":
+		data, err := os.ReadFile(skills.DefaultConfigPath())
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(a.out, string(data))
+		if len(data) > 0 && data[len(data)-1] != '\n' {
+			fmt.Fprintln(a.out)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown config command %q", args[0])
+	}
 }
 
 func (a *app) skills(args []string) error {
@@ -310,6 +340,8 @@ agentswitch manages active and disabled agent skills.
 Usage:
   agentswitch status
   agentswitch init
+  agentswitch config path
+  agentswitch config show
   agentswitch enable <skill>
   agentswitch disable <skill>
   agentswitch pack list
@@ -330,8 +362,9 @@ Flags:
   --dry-run, -n  show planned changes without modifying files
 
 Init:
-  agentswitch init          create ~/.config/agentswitch/config.toml
-  agentswitch init --force  overwrite ~/.config/agentswitch/config.toml
+  agentswitch init            create example ~/.config/agentswitch/config.toml
+  agentswitch init --minimal  create minimal ~/.config/agentswitch/config.toml
+  agentswitch init --force    overwrite ~/.config/agentswitch/config.toml
 `))
 }
 
