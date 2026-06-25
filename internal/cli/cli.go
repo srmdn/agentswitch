@@ -140,7 +140,11 @@ func (a *app) preset(args []string) error {
 }
 
 func (a *app) skillsStatus() error {
-	inventory, err := skills.DefaultManager().Inventory()
+	manager, err := a.manager()
+	if err != nil {
+		return err
+	}
+	inventory, err := manager.Inventory()
 	if err != nil {
 		return err
 	}
@@ -149,7 +153,11 @@ func (a *app) skillsStatus() error {
 }
 
 func (a *app) skillsDoctor() error {
-	inventory, err := skills.DefaultManager().Inventory()
+	manager, err := a.manager()
+	if err != nil {
+		return err
+	}
+	inventory, err := manager.Inventory()
 	if err != nil {
 		return err
 	}
@@ -166,7 +174,10 @@ func (a *app) skillsDoctor() error {
 }
 
 func (a *app) packList() error {
-	m := skills.DefaultManager()
+	m, err := a.manager()
+	if err != nil {
+		return err
+	}
 	names := m.PackNames()
 	if len(names) == 0 {
 		fmt.Fprintln(a.out, "No packs configured.")
@@ -180,7 +191,10 @@ func (a *app) packList() error {
 }
 
 func (a *app) presetList() error {
-	m := skills.DefaultManager()
+	m, err := a.manager()
+	if err != nil {
+		return err
+	}
 	names := m.PresetNames()
 	if len(names) == 0 {
 		fmt.Fprintln(a.out, "No presets configured.")
@@ -200,7 +214,10 @@ func (a *app) skillSwitch(args []string, enable bool) error {
 		return errors.New("usage: agentswitch disable <skill>")
 	}
 
-	m := skills.DefaultManager()
+	m, err := a.manager()
+	if err != nil {
+		return err
+	}
 	changes, err := m.SetSkillEnabled(args[0], enable, a.dryRun)
 	if err != nil {
 		return err
@@ -220,7 +237,10 @@ func (a *app) packSwitch(args []string, enable bool) error {
 		return errors.New("usage: agentswitch pack disable <pack>")
 	}
 
-	m := skills.DefaultManager()
+	m, err := a.manager()
+	if err != nil {
+		return err
+	}
 	changes, err := m.SetPackEnabled(args[0], enable, a.dryRun)
 	if err != nil {
 		return err
@@ -240,7 +260,10 @@ func (a *app) skillsSwitch(args []string, enable bool) error {
 		return errors.New("usage: agentswitch skills disable <name-or-pack>")
 	}
 
-	m := skills.DefaultManager()
+	m, err := a.manager()
+	if err != nil {
+		return err
+	}
 	changes, err := m.SetEnabled(args[0], enable, a.dryRun)
 	if err != nil {
 		return err
@@ -257,7 +280,10 @@ func (a *app) presetApply(args []string) error {
 		return errors.New("usage: agentswitch preset apply <preset>")
 	}
 
-	m := skills.DefaultManager()
+	m, err := a.manager()
+	if err != nil {
+		return err
+	}
 	changes, err := m.ApplyPreset(args[0], a.dryRun)
 	if err != nil {
 		return err
@@ -271,6 +297,10 @@ func (a *app) presetApply(args []string) error {
 
 func (a *app) skillsPreset(args []string) error {
 	return a.presetApply(args)
+}
+
+func (a *app) manager() (skills.Manager, error) {
+	return skills.LoadDefaultManager()
 }
 
 func (a *app) printUsage() {

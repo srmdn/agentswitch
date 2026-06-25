@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -26,6 +27,24 @@ func TestHelpShowsClearCommandModel(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Fatalf("expected help to contain %q:\n%s", want, text)
 		}
+	}
+}
+
+func TestMalformedConfigFailsCommand(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	if err := os.WriteFile(configPath, []byte("[unknown]\nvalue = true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("AGENTSWITCH_CONFIG", configPath)
+
+	var errOut bytes.Buffer
+	code := Run([]string{"status"}, &bytes.Buffer{}, &errOut)
+	if code == 0 {
+		t.Fatal("expected malformed config to fail")
+	}
+	if !strings.Contains(errOut.String(), "unsupported section") {
+		t.Fatalf("expected parse error, got: %s", errOut.String())
 	}
 }
 

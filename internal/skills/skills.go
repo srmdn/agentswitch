@@ -64,11 +64,25 @@ type Change struct {
 }
 
 func DefaultManager() Manager {
-	manager := DefaultManagerWithoutConfig()
-	if config, err := LoadConfig(DefaultConfigPath()); err == nil {
-		manager.ApplyConfig(config)
+	manager, err := LoadDefaultManager()
+	if err != nil {
+		return DefaultManagerWithoutConfig()
 	}
 	return manager
+}
+
+func LoadDefaultManager() (Manager, error) {
+	manager := DefaultManagerWithoutConfig()
+	configPath := DefaultConfigPath()
+	config, err := LoadConfig(configPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return manager, nil
+		}
+		return Manager{}, fmt.Errorf("load config %s: %w", configPath, err)
+	}
+	manager.ApplyConfig(config)
+	return manager, nil
 }
 
 func DefaultManagerWithoutConfig() Manager {
@@ -352,7 +366,7 @@ func setDirectoryPackEnabled(layout PackLayout, enabled bool, dryRun bool) ([]Ch
 	if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
 		return nil, err
 	}
-	if err := os.Rename(from, to); err != nil {
+	if err := movePath(from, to); err != nil {
 		return nil, err
 	}
 	return changes, nil
@@ -382,7 +396,7 @@ func setGroupPackEnabled(layout PackLayout, enabled bool, dryRun bool) ([]Change
 		if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
 			return changes, err
 		}
-		if err := os.Rename(from, to); err != nil {
+		if err := movePath(from, to); err != nil {
 			return changes, err
 		}
 	}
@@ -404,7 +418,7 @@ func setSymlinkedPackEnabled(layout PackLayout, enabled bool, dryRun bool) ([]Ch
 					if err := os.MkdirAll(layout.Active, 0o755); err != nil {
 						return changes, err
 					}
-					if err := os.Rename(disabledSkill, activeSkill); err != nil {
+					if err := movePath(disabledSkill, activeSkill); err != nil {
 						return changes, err
 					}
 				}
@@ -437,7 +451,7 @@ func setSymlinkedPackEnabled(layout PackLayout, enabled bool, dryRun bool) ([]Ch
 				if err := os.MkdirAll(layout.Disabled, 0o755); err != nil {
 					return changes, err
 				}
-				if err := os.Rename(activeSkill, disabledSkill); err != nil {
+				if err := movePath(activeSkill, disabledSkill); err != nil {
 					return changes, err
 				}
 			}
@@ -518,7 +532,7 @@ func (m Manager) setGoPackEnabled(enabled bool, dryRun bool) ([]Change, bool, er
 	if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
 		return nil, true, err
 	}
-	if err := os.Rename(from, to); err != nil {
+	if err := movePath(from, to); err != nil {
 		return nil, true, err
 	}
 	return changes, true, nil
@@ -559,7 +573,7 @@ func (m Manager) setTranslationPackEnabled(enabled bool, dryRun bool) ([]Change,
 		if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
 			return changes, true, err
 		}
-		if err := os.Rename(from, to); err != nil {
+		if err := movePath(from, to); err != nil {
 			return changes, true, err
 		}
 	}
@@ -586,7 +600,7 @@ func (m Manager) setWordPressPackEnabled(enabled bool, dryRun bool) ([]Change, b
 					if err := os.MkdirAll(m.CompatPaths.CodexSkills, 0o755); err != nil {
 						return changes, true, err
 					}
-					if err := os.Rename(disabledSkill, activeSkill); err != nil {
+					if err := movePath(disabledSkill, activeSkill); err != nil {
 						return changes, true, err
 					}
 				}
@@ -619,7 +633,7 @@ func (m Manager) setWordPressPackEnabled(enabled bool, dryRun bool) ([]Change, b
 				if err := os.MkdirAll(packDir, 0o755); err != nil {
 					return changes, true, err
 				}
-				if err := os.Rename(activeSkill, disabledSkill); err != nil {
+				if err := movePath(activeSkill, disabledSkill); err != nil {
 					return changes, true, err
 				}
 			}
@@ -687,7 +701,7 @@ func (m Manager) setOneAllowMissing(name string, enabled bool, dryRun bool, allo
 		if err := os.MkdirAll(destinationRoot, 0o755); err != nil {
 			return Change{}, false, err
 		}
-		if err := os.Rename(skill.Path, destination); err != nil {
+		if err := movePath(skill.Path, destination); err != nil {
 			return Change{}, false, err
 		}
 		return change, true, nil
@@ -906,6 +920,13 @@ func changesForNames(action string, names []string, from string, to string) []Ch
 func pathExists(path string) bool {
 	_, err := os.Lstat(path)
 	return err == nil
+}
+
+func movePath(from string, to string) error {
+	if pathExists(to) {
+		return fmt.Errorf("destination already exists: %s", to)
+	}
+	return os.Rename(from, to)
 }
 
 func firstExistingPath(paths ...string) string {

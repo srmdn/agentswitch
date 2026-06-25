@@ -66,6 +66,41 @@ func TestDryRunDoesNotMoveSkill(t *testing.T) {
 	}
 }
 
+func TestGroupPackRefusesToOverwriteExistingDestination(t *testing.T) {
+	temp := t.TempDir()
+	layout := PackLayout{
+		Type:     "group",
+		Active:   filepath.Join(temp, "active"),
+		Disabled: filepath.Join(temp, "disabled"),
+		Skills:   []string{"translation"},
+	}
+	mkdirSkill(t, layout.Active, "translation")
+	mkdirSkill(t, layout.Disabled, "translation")
+
+	_, err := setGroupPackEnabled(layout, true, false)
+	if err == nil {
+		t.Fatal("expected group pack move to refuse existing destination")
+	}
+}
+
+func TestMovePathRefusesExistingDestination(t *testing.T) {
+	temp := t.TempDir()
+	from := filepath.Join(temp, "from")
+	to := filepath.Join(temp, "to")
+	if err := os.Mkdir(from, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(to, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := movePath(from, to); err == nil {
+		t.Fatal("expected movePath to refuse existing destination")
+	}
+	if _, err := os.Stat(from); err != nil {
+		t.Fatalf("expected source to remain after refused move: %v", err)
+	}
+}
+
 func TestApplyPresetDisablesManagedSkillsOutsidePreset(t *testing.T) {
 	temp := t.TempDir()
 	manager := testManager(temp)
