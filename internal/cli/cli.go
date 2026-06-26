@@ -52,7 +52,7 @@ func (a *app) run(args []string) error {
 	case "config":
 		return a.config(rest[1:])
 	case "status":
-		return a.skillsStatus()
+		return a.skillsStatus(rest[1:])
 	case "doctor":
 		return a.skillsDoctor()
 	case "enable":
@@ -123,7 +123,7 @@ func (a *app) skills(args []string) error {
 
 	switch args[0] {
 	case "status":
-		return a.skillsStatus()
+		return a.skillsStatus(args[1:])
 	case "enable":
 		return a.skillsSwitch(args[1:], true)
 	case "disable":
@@ -169,7 +169,17 @@ func (a *app) preset(args []string) error {
 	}
 }
 
-func (a *app) skillsStatus() error {
+func (a *app) skillsStatus(args []string) error {
+	summaryOnly := false
+	for _, arg := range args {
+		switch arg {
+		case "--summary":
+			summaryOnly = true
+		default:
+			return fmt.Errorf("unknown status option %q", arg)
+		}
+	}
+
 	manager, err := a.manager()
 	if err != nil {
 		return err
@@ -177,6 +187,10 @@ func (a *app) skillsStatus() error {
 	inventory, err := manager.Inventory()
 	if err != nil {
 		return err
+	}
+	if summaryOnly {
+		printSummary(a.out, inventory)
+		return nil
 	}
 	printInventory(a.out, inventory)
 	return nil
@@ -342,6 +356,7 @@ Usage:
   agentswitch init
   agentswitch config path
   agentswitch config show
+  agentswitch status --summary
   agentswitch enable <skill>
   agentswitch disable <skill>
   agentswitch pack list
@@ -374,7 +389,9 @@ func printInventory(out io.Writer, inventory skills.Inventory) {
 		return
 	}
 
-	fmt.Fprintln(out, "STATE     ROOT    NAME")
+	printSummary(out, inventory)
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "STATE     SCOPE   ROOT    NAME")
 	for _, skill := range inventory.Items {
 		state := "active"
 		if !skill.Active {
@@ -383,8 +400,28 @@ func printInventory(out io.Writer, inventory skills.Inventory) {
 		if skill.BrokenSymlink {
 			state += "!"
 		}
-		fmt.Fprintf(out, "%-9s %-7s %s\n", state, skill.RootName, skill.Name)
+		scope, root := splitRootName(skill.RootName)
+		fmt.Fprintf(out, "%-9s %-7s %-7s %s\n", state, scope, root, skill.Name)
 	}
+}
+
+func printSummary(out io.Writer, inventory skills.Inventory) {
+	summary := inventory.Summary()
+	fmt.Fprintf(out, "Active skills: %d\n", summary.Active)
+	fmt.Fprintf(out, "Disabled skills: %d\n", summary.Disabled)
+	fmt.Fprintf(out, "Broken symlinks: %d\n", summary.Broken)
+	fmt.Fprintf(out, "Total skills: %d\n", summary.Total)
+}
+
+func splitRootName(name string) (string, string) {
+	scope, root, ok := strings.Cut(name, ":")
+	if !ok {
+		return name, "-"
+	}
+	if root == "" {
+		root = "-"
+	}
+	return scope, root
 }
 
 func printChanges(out io.Writer, changes []skills.Change, dryRun bool) {

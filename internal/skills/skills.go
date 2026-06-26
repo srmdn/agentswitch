@@ -56,6 +56,13 @@ type Inventory struct {
 	Items []Skill
 }
 
+type Summary struct {
+	Active   int
+	Disabled int
+	Broken   int
+	Total    int
+}
+
 type Change struct {
 	Action string
 	Name   string
@@ -184,6 +191,22 @@ func (i Inventory) Broken() []Skill {
 		}
 	}
 	return broken
+}
+
+func (i Inventory) Summary() Summary {
+	var summary Summary
+	for _, skill := range i.Items {
+		summary.Total++
+		if skill.Active {
+			summary.Active++
+		} else {
+			summary.Disabled++
+		}
+		if skill.BrokenSymlink {
+			summary.Broken++
+		}
+	}
+	return summary
 }
 
 func (m Manager) PackNames() []string {

@@ -106,6 +106,7 @@ Show active and disabled skills:
 
 ```bash
 agentswitch status
+agentswitch status --summary
 ```
 
 Enable or disable one user skill:
@@ -145,6 +146,19 @@ agentswitch -n preset apply <preset>
 
 After enabling, disabling, or applying a preset, restart Codex so it can reload
 the active skill metadata.
+
+`agentswitch status` prints counts first, followed by a table:
+
+```text
+Active skills: 9
+Disabled skills: 63
+Broken symlinks: 0
+Total skills: 72
+
+STATE     SCOPE   ROOT    NAME
+active    user    -       docs-writer
+disabled  codex   -       wp-rest-api
+```
 
 The older `agentswitch skills ...` command shape is still accepted as a
 compatibility alias while the CLI settles. For example,

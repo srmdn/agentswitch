@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/srmdn/agentswitch/internal/skills"
 )
 
 func TestHelpShowsClearCommandModel(t *testing.T) {
@@ -54,6 +56,48 @@ func TestConfigPathAndShow(t *testing.T) {
 	}
 	if showOut.String() != "marker = \"ok\"\n" {
 		t.Fatalf("unexpected config content: %q", showOut.String())
+	}
+}
+
+func TestPrintInventoryIncludesSummaryAndScopeColumns(t *testing.T) {
+	inventory := skills.Inventory{Items: []skills.Skill{
+		{Name: "docs-writer", RootName: "user", Active: true},
+		{Name: "wp-rest-api", RootName: "codex", Active: false},
+		{Name: "repo-skill", RootName: "repo:services/api", Active: true},
+		{Name: "missing", RootName: "user", Active: true, BrokenSymlink: true},
+	}}
+
+	var out bytes.Buffer
+	printInventory(&out, inventory)
+	text := out.String()
+	for _, want := range []string{
+		"Active skills: 3",
+		"Disabled skills: 1",
+		"Broken symlinks: 1",
+		"Total skills: 4",
+		"STATE     SCOPE   ROOT    NAME",
+		"active    repo    services/api repo-skill",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("expected status output to contain %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestPrintSummaryOnly(t *testing.T) {
+	inventory := skills.Inventory{Items: []skills.Skill{
+		{Name: "active", RootName: "user", Active: true},
+		{Name: "disabled", RootName: "user", Active: false},
+	}}
+
+	var out bytes.Buffer
+	printSummary(&out, inventory)
+	text := out.String()
+	if strings.Contains(text, "STATE") {
+		t.Fatalf("summary should not include table header:\n%s", text)
+	}
+	if !strings.Contains(text, "Active skills: 1") || !strings.Contains(text, "Disabled skills: 1") {
+		t.Fatalf("unexpected summary:\n%s", text)
 	}
 }
 
